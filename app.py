@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import altair as alt
 import json
 from io import BytesIO
 from pathlib import Path
@@ -306,6 +305,65 @@ def inject_styles() -> None:
             margin: 0;
             color: #344754;
             line-height: 1.6;
+        }
+        .metric-bar-list {
+            margin-top: 0.3rem;
+        }
+        .metric-bar-row {
+            display: grid;
+            grid-template-columns: minmax(90px, 1.1fr) minmax(150px, 3fr) minmax(60px, 0.8fr);
+            gap: 0.7rem;
+            align-items: center;
+            margin: 0.55rem 0;
+        }
+        .metric-bar-label {
+            color: #213442;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .metric-bar-track {
+            width: 100%;
+            height: 12px;
+            background: rgba(27, 42, 53, 0.09);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .metric-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+        }
+        .metric-bar-value {
+            text-align: right;
+            color: #324755;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .matrix-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px;
+            margin: 0.5rem 0 0.75rem 0;
+        }
+        .matrix-table th {
+            text-align: center;
+            color: #173249;
+            font-size: 0.88rem;
+            font-weight: 700;
+            padding: 0.35rem 0.4rem;
+        }
+        .matrix-table td {
+            border-radius: 14px;
+            text-align: center;
+            padding: 0.8rem 0.55rem;
+            font-weight: 700;
+            min-width: 74px;
+        }
+        .matrix-axis {
+            color: #4b5c68;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
         </style>
         """,
@@ -630,7 +688,12 @@ def render_prediction_summary(prediction_row: pd.Series) -> None:
             use_container_width=True,
             hide_index=True,
         )
-    st.bar_chart(probability_frame.set_index("Class"))
+    render_metric_bars(
+        items=[(row["Class"], float(row["Probability"])) for _, row in probability_frame.iterrows()],
+        value_format=lambda value: f"{value:.1%}",
+        bar_color="#D56C47",
+        max_value=1.0,
+    )
     render_recommendation_panel(str(prediction_row["Target"]))
 
 
@@ -664,128 +727,118 @@ def render_recommendation_panel(predicted_class: str) -> None:
         st.markdown(f"- {action}")
 
 
-def build_country_mix_chart(eda_summary: dict[str, Any]) -> alt.Chart | None:
+def render_metric_bars(
+    items: list[tuple[str, float]],
+    value_format: Any,
+    bar_color: str = "#245F7A",
+    max_value: float | None = None,
+) -> None:
+    if not items:
+        return
+
+    upper_bound = max_value if max_value is not None else max(value for _, value in items)
+    upper_bound = upper_bound if upper_bound and upper_bound > 0 else 1.0
+    rows = []
+    for label, value in items:
+        width = max(0.0, min(100.0, (float(value) / upper_bound) * 100))
+        rows.append(
+            f"""
+            <div class="metric-bar-row">
+                <div class="metric-bar-label">{label}</div>
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill" style="width:{width:.2f}%; background:{bar_color};"></div>
+                </div>
+                <div class="metric-bar-value">{value_format(float(value))}</div>
+            </div>
+            """
+        )
+
+    st.markdown(
+        f'<div class="metric-bar-list">{"".join(rows)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def build_country_mix_dataframe(eda_summary: dict[str, Any]) -> pd.DataFrame:
     country_distribution = eda_summary.get("country_distribution", {}) if eda_summary else {}
     if not country_distribution:
-        return None
+        return pd.DataFrame()
 
-    mix_df = pd.DataFrame(
-        {
-            "country": list(country_distribution.keys()),
-            "share": [float(value) for value in country_distribution.values()],
-        }
-    )
-    mix_df["share_label"] = mix_df["share"].map(lambda value: f"{value:.1%}")
-    return (
-        alt.Chart(mix_df)
-        .mark_bar(cornerRadiusTopLeft=8, cornerRadiusTopRight=8, color="#D56C47")
-        .encode(
-            x=alt.X("country:N", title="Country", sort="-y"),
-            y=alt.Y("share:Q", title="Portfolio share", axis=alt.Axis(format="%")),
-            tooltip=["country:N", alt.Tooltip("share:Q", format=".1%")],
+    mix_df = (
+        pd.DataFrame(
+            {
+                "country": list(country_distribution.keys()),
+                "share": [float(value) for value in country_distribution.values()],
+            }
         )
-        .properties(height=320)
+        .sort_values("share", ascending=False)
+        .reset_index(drop=True)
     )
+    mix_df["country"] = mix_df["country"].str.title()
+    return mix_df
 
 
-def build_country_performance_chart(country_slice: pd.DataFrame) -> alt.Chart | None:
+def build_country_performance_dataframe(country_slice: pd.DataFrame) -> pd.DataFrame:
     if country_slice.empty:
-        return None
+        return pd.DataFrame()
 
     chart_df = country_slice.copy()
     chart_df["group"] = chart_df["group"].str.title()
-    long_df = chart_df.melt(
-        id_vars=["group"],
-        value_vars=["weighted_f1", "macro_f1"],
-        var_name="metric",
-        value_name="score",
-    )
-    long_df["metric"] = long_df["metric"].map(
-        {"weighted_f1": "Weighted F1", "macro_f1": "Macro F1"}
-    )
-    color_scale = alt.Scale(domain=["Weighted F1", "Macro F1"], range=["#245F7A", "#D56C47"])
-    return (
-        alt.Chart(long_df)
-        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
-        .encode(
-            x=alt.X("group:N", title="Country"),
-            y=alt.Y("score:Q", title="Score", scale=alt.Scale(domain=[0, 1])),
-            color=alt.Color("metric:N", scale=color_scale, title="Metric"),
-            xOffset="metric:N",
-            tooltip=["group:N", "metric:N", alt.Tooltip("score:Q", format=".3f")],
-        )
-        .properties(height=340)
-    )
+    return chart_df[["group", "weighted_f1", "macro_f1", "rows"]].reset_index(drop=True)
 
 
-def build_confusion_matrix_chart(confusion_payload: dict[str, Any], normalize: bool = False) -> alt.Chart | None:
+def build_confusion_matrix_dataframe(confusion_payload: dict[str, Any], normalize: bool = False) -> pd.DataFrame:
     labels = confusion_payload.get("labels", [])
     matrix = confusion_payload.get("matrix", [])
     if not labels or not matrix:
-        return None
-
-    matrix_df = pd.DataFrame(matrix, index=labels, columns=labels)
-    if normalize:
-        matrix_plot = matrix_df.div(matrix_df.sum(axis=1).replace(0, 1), axis=0)
-        value_label = "share"
-    else:
-        matrix_plot = matrix_df
-        value_label = "count"
-
-    plot_df = (
-        matrix_plot.reset_index(names="actual")
-        .melt(id_vars="actual", var_name="predicted", value_name=value_label)
-    )
-    plot_df["label"] = plot_df[value_label].map(
-        (lambda value: f"{value:.2f}") if normalize else (lambda value: f"{int(value)}")
-    )
-    color_field = f"{value_label}:Q"
-    return (
-        alt.Chart(plot_df)
-        .mark_rect(cornerRadius=10)
-        .encode(
-            x=alt.X("predicted:N", title="Predicted"),
-            y=alt.Y("actual:N", title="Actual"),
-            color=alt.Color(color_field, scale=alt.Scale(scheme="teals"), title="Value"),
-            tooltip=[
-                "actual:N",
-                "predicted:N",
-                alt.Tooltip(f"{value_label}:Q", format=".2f" if normalize else ","),
-            ],
-        )
-        .properties(height=320)
-    )
-
-
-def build_confusion_matrix_labels(confusion_payload: dict[str, Any], normalize: bool = False) -> alt.Chart | None:
-    labels = confusion_payload.get("labels", [])
-    matrix = confusion_payload.get("matrix", [])
-    if not labels or not matrix:
-        return None
+        return pd.DataFrame()
 
     matrix_df = pd.DataFrame(matrix, index=labels, columns=labels)
     if normalize:
         matrix_df = matrix_df.div(matrix_df.sum(axis=1).replace(0, 1), axis=0)
-        value_field = "share"
         matrix_df = matrix_df.round(2)
-    else:
-        value_field = "count"
+    return matrix_df
 
-    plot_df = (
-        matrix_df.reset_index(names="actual")
-        .melt(id_vars="actual", var_name="predicted", value_name=value_field)
-    )
-    plot_df["label"] = plot_df[value_field].map(
-        (lambda value: f"{value:.2f}") if normalize else (lambda value: f"{int(value)}")
-    )
-    return (
-        alt.Chart(plot_df)
-        .mark_text(fontSize=13, color="#10232F", fontWeight="bold")
-        .encode(
-            x="predicted:N",
-            y="actual:N",
-            text="label:N",
+
+def render_confusion_matrix_html(confusion_df: pd.DataFrame, normalize: bool = False) -> None:
+    if confusion_df.empty:
+        return
+
+    labels = list(confusion_df.columns)
+    max_value = float(confusion_df.to_numpy().max()) if float(confusion_df.to_numpy().max()) > 0 else 1.0
+
+    header_cells = "".join(f"<th>{label}</th>" for label in labels)
+    body_rows = []
+    for actual_label, row in confusion_df.iterrows():
+        cells = []
+        for predicted_label in labels:
+            value = float(row[predicted_label])
+            intensity = 0.12 + 0.78 * (value / max_value)
+            text_color = "#ffffff" if intensity > 0.5 else "#16324a"
+            display_value = f"{value:.2f}" if normalize else f"{int(value)}"
+            cells.append(
+                f'<td style="background: rgba(36,95,122,{intensity:.3f}); color: {text_color};">{display_value}</td>'
+            )
+        body_rows.append(
+            f"<tr><th>{actual_label}</th>{''.join(cells)}</tr>"
         )
+
+    st.markdown(
+        f"""
+        <div class="matrix-axis">Rows = actual class, columns = predicted class</div>
+        <table class="matrix-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    {header_cells}
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(body_rows)}
+            </tbody>
+        </table>
+        """,
+        unsafe_allow_html=True,
     )
 
 
@@ -935,23 +988,41 @@ def render_eda_story() -> None:
                 body = "Missingness is widespread across access-to-finance fields, so blank values themselves become part of the business story."
             render_story_card("Missing data is part of the story", body)
 
-    country_mix_chart = build_country_mix_chart(eda_summary)
+    country_mix_df = build_country_mix_dataframe(eda_summary)
     country_slice = (
         subgroup_analysis[subgroup_analysis["segment"] == "country"].sort_values("macro_f1", ascending=False)
         if not subgroup_analysis.empty
         else pd.DataFrame()
     )
-    country_perf_chart = build_country_performance_chart(country_slice) if not country_slice.empty else None
-    if country_mix_chart is not None or country_perf_chart is not None:
+    country_perf_df = build_country_performance_dataframe(country_slice) if not country_slice.empty else pd.DataFrame()
+    if not country_mix_df.empty or not country_perf_df.empty:
         st.markdown("**Country comparison built directly in the app**")
         country_cols = st.columns(2)
         with country_cols[0]:
-            if country_mix_chart is not None:
-                st.altair_chart(country_mix_chart, use_container_width=True)
+            if not country_mix_df.empty:
+                render_metric_bars(
+                    items=[(row["country"], float(row["share"])) for _, row in country_mix_df.iterrows()],
+                    value_format=lambda value: f"{value:.1%}",
+                    bar_color="#D56C47",
+                    max_value=1.0,
+                )
                 st.caption("Portfolio share by country. This shows where the app is seeing the most business records.")
         with country_cols[1]:
-            if country_perf_chart is not None:
-                st.altair_chart(country_perf_chart, use_container_width=True)
+            if not country_perf_df.empty:
+                st.markdown("Weighted F1 by country")
+                render_metric_bars(
+                    items=[(row["group"], float(row["weighted_f1"])) for _, row in country_perf_df.iterrows()],
+                    value_format=lambda value: f"{value:.3f}",
+                    bar_color="#245F7A",
+                    max_value=1.0,
+                )
+                st.markdown("Macro F1 by country")
+                render_metric_bars(
+                    items=[(row["group"], float(row["macro_f1"])) for _, row in country_perf_df.iterrows()],
+                    value_format=lambda value: f"{value:.3f}",
+                    bar_color="#D56C47",
+                    max_value=1.0,
+                )
                 st.caption("Country-level model performance. Lesotho is the clearest opportunity for the next improvement cycle.")
 
     image_specs = [
@@ -1006,13 +1077,14 @@ def render_eda_story() -> None:
     if confusion_payload:
         st.markdown("**Confusion matrix**")
         normalize_matrix = st.toggle("Show normalized confusion matrix", value=True)
-        heatmap = build_confusion_matrix_chart(confusion_payload, normalize=normalize_matrix)
-        labels = build_confusion_matrix_labels(confusion_payload, normalize=normalize_matrix)
-        if heatmap is not None and labels is not None:
-            st.altair_chart(heatmap + labels, use_container_width=True)
+        confusion_df = build_confusion_matrix_dataframe(confusion_payload, normalize=normalize_matrix)
+        if not confusion_df.empty:
+            render_confusion_matrix_html(confusion_df, normalize=normalize_matrix)
             st.caption(
                 "The strongest pattern is reliable `Low` detection, while most errors happen between `Medium` and `High` or between `Medium` and `Low`."
             )
+            with st.expander("Confusion matrix values"):
+                st.dataframe(confusion_df, use_container_width=True)
 
     if not subgroup_analysis.empty:
         st.markdown("**Where the model is strongest and weakest**")
@@ -1210,7 +1282,14 @@ def main() -> None:
                 summary_col, download_col = st.columns([1.2, 1.0])
                 with summary_col:
                     st.dataframe(summary, use_container_width=True, hide_index=True)
-                    st.bar_chart(summary.set_index("Predicted class"))
+                    render_metric_bars(
+                        items=[
+                            (str(row["Predicted class"]), float(row["Count"]))
+                            for _, row in summary.iterrows()
+                        ],
+                        value_format=lambda value: f"{int(value)}",
+                        bar_color="#245F7A",
+                    )
                 with download_col:
                     st.download_button(
                         "Download scored batch",
