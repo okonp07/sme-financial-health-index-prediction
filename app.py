@@ -20,6 +20,12 @@ TRAIN_PATH = APP_ROOT / "data" / "raw" / "Train.csv"
 TEST_PATH = APP_ROOT / "data" / "raw" / "Test.csv"
 VARIABLE_DEFINITIONS_PATH = APP_ROOT / "data" / "raw" / "VariableDefinitions.csv"
 RUN_SUMMARY_PATH = APP_ROOT / "outputs" / "metrics" / "run_summary.json"
+EDA_SUMMARY_PATH = APP_ROOT / "outputs" / "eda" / "eda_summary.json"
+EDA_REPORT_PATH = APP_ROOT / "outputs" / "eda" / "eda_report.md"
+MODEL_COMPARISON_PATH = APP_ROOT / "outputs" / "metrics" / "model_comparison.csv"
+SUBGROUP_ANALYSIS_PATH = APP_ROOT / "outputs" / "metrics" / "subgroup_analysis.csv"
+CLASSIFICATION_REPORT_PATH = APP_ROOT / "outputs" / "metrics" / "classification_report.json"
+EDA_IMAGE_DIR = APP_ROOT / "outputs" / "eda"
 
 RAW_INPUT_COLUMNS = [
     "ID",
@@ -192,16 +198,17 @@ def inject_styles() -> None:
         <style>
         .stApp {
             background:
-                radial-gradient(circle at top right, rgba(212, 179, 83, 0.16), transparent 26%),
-                linear-gradient(180deg, #f7f3eb 0%, #fdfcf8 100%);
+                radial-gradient(circle at top right, rgba(224, 107, 68, 0.14), transparent 24%),
+                radial-gradient(circle at bottom left, rgba(44, 95, 122, 0.12), transparent 26%),
+                linear-gradient(180deg, #f5efe5 0%, #fcfaf6 100%);
         }
         .hero-card {
-            background: linear-gradient(135deg, #163c33 0%, #245847 58%, #d1b25f 140%);
+            background: linear-gradient(135deg, #16324a 0%, #245f7a 56%, #d56c47 140%);
             border-radius: 26px;
             padding: 2rem 2rem 1.6rem 2rem;
-            color: #fff8eb;
+            color: #fff7ee;
             margin-bottom: 1rem;
-            box-shadow: 0 18px 42px rgba(22, 60, 51, 0.18);
+            box-shadow: 0 18px 42px rgba(22, 50, 74, 0.2);
         }
         .hero-card h1 {
             margin: 0 0 0.4rem 0;
@@ -213,7 +220,7 @@ def inject_styles() -> None:
             margin: 0;
             max-width: 52rem;
             line-height: 1.55;
-            color: rgba(255, 248, 235, 0.94);
+            color: rgba(255, 247, 238, 0.94);
         }
         .hero-pills {
             display: flex;
@@ -222,18 +229,51 @@ def inject_styles() -> None:
             margin-top: 1rem;
         }
         .hero-pill {
-            border: 1px solid rgba(255, 248, 235, 0.22);
-            background: rgba(255, 248, 235, 0.1);
+            border: 1px solid rgba(255, 247, 238, 0.22);
+            background: rgba(255, 247, 238, 0.1);
             border-radius: 999px;
             padding: 0.35rem 0.8rem;
             font-size: 0.85rem;
         }
         .section-note {
-            border-left: 4px solid #245847;
-            background: rgba(36, 88, 71, 0.07);
+            border-left: 4px solid #245f7a;
+            background: rgba(36, 95, 122, 0.08);
             border-radius: 14px;
             padding: 0.85rem 1rem;
             margin: 0.75rem 0 1rem 0;
+        }
+        .story-card {
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(22, 50, 74, 0.08);
+            border-radius: 20px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 26px rgba(22, 50, 74, 0.06);
+        }
+        .story-card h4 {
+            margin: 0 0 0.45rem 0;
+            color: #16324a;
+        }
+        .story-card p {
+            margin: 0;
+            color: #31424d;
+            line-height: 1.55;
+        }
+        .story-band {
+            background: linear-gradient(135deg, rgba(213, 108, 71, 0.11), rgba(36, 95, 122, 0.08));
+            border-radius: 22px;
+            padding: 1.2rem 1.25rem;
+            border: 1px solid rgba(213, 108, 71, 0.14);
+            margin-bottom: 1rem;
+        }
+        .story-band h3 {
+            margin: 0 0 0.4rem 0;
+            color: #16324a;
+        }
+        .story-band p {
+            margin: 0;
+            color: #344754;
+            line-height: 1.6;
         }
         </style>
         """,
@@ -289,6 +329,41 @@ def load_run_summary() -> dict[str, Any]:
     if not RUN_SUMMARY_PATH.exists():
         return {}
     return json.loads(RUN_SUMMARY_PATH.read_text())
+
+
+@st.cache_data(show_spinner=False)
+def load_eda_summary() -> dict[str, Any]:
+    if not EDA_SUMMARY_PATH.exists():
+        return {}
+    return json.loads(EDA_SUMMARY_PATH.read_text())
+
+
+@st.cache_data(show_spinner=False)
+def load_classification_report() -> dict[str, Any]:
+    if not CLASSIFICATION_REPORT_PATH.exists():
+        return {}
+    return json.loads(CLASSIFICATION_REPORT_PATH.read_text())
+
+
+@st.cache_data(show_spinner=False)
+def load_model_comparison() -> pd.DataFrame:
+    if not MODEL_COMPARISON_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(MODEL_COMPARISON_PATH)
+
+
+@st.cache_data(show_spinner=False)
+def load_subgroup_analysis() -> pd.DataFrame:
+    if not SUBGROUP_ANALYSIS_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(SUBGROUP_ANALYSIS_PATH)
+
+
+@st.cache_data(show_spinner=False)
+def load_eda_report_text() -> str:
+    if not EDA_REPORT_PATH.exists():
+        return ""
+    return EDA_REPORT_PATH.read_text()
 
 
 def resolve_categorical_options(field_name: str, reference_df: pd.DataFrame) -> list[str]:
@@ -519,6 +594,160 @@ def render_prediction_summary(prediction_row: pd.Series) -> None:
     st.bar_chart(probability_frame.set_index("Class"))
 
 
+def render_story_card(title: str, body: str) -> None:
+    st.markdown(
+        f"""
+        <div class="story-card">
+            <h4>{title}</h4>
+            <p>{body}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_eda_story() -> None:
+    eda_summary = load_eda_summary()
+    report = load_classification_report()
+    model_comparison = load_model_comparison()
+    subgroup_analysis = load_subgroup_analysis()
+    eda_report_text = load_eda_report_text()
+
+    st.subheader("Data story and model narrative")
+    st.markdown(
+        """
+        <div class="story-band">
+            <h3>What this portfolio looks like</h3>
+            <p>
+                This dataset is not just about raw revenue. It captures resilience, access to finance,
+                business maturity, owner sentiment, and informal coping mechanisms across four countries.
+                The strongest story in the data is that context matters: country patterns, missingness, and
+                access signals are all carrying real predictive information.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if eda_summary:
+        rows = eda_summary.get("shape", {}).get("rows", 0)
+        columns = eda_summary.get("shape", {}).get("columns", 0)
+        class_distribution = eda_summary.get("target_distribution", {})
+        high_share = float(class_distribution.get("High", 0.0)) * 100
+        low_share = float(class_distribution.get("Low", 0.0)) * 100
+        country_distribution = eda_summary.get("country_distribution", {})
+        top_country = max(country_distribution, key=country_distribution.get) if country_distribution else "N/A"
+
+        metric_cols = st.columns(4)
+        metric_cols[0].metric("Training rows", f"{rows:,}")
+        metric_cols[1].metric("Input fields", str(columns))
+        metric_cols[2].metric("Low-class share", f"{low_share:.1f}%")
+        metric_cols[3].metric("High-class share", f"{high_share:.1f}%")
+
+        story_cols = st.columns(3)
+        with story_cols[0]:
+            render_story_card(
+                "Class imbalance defines the challenge",
+                f"`Low` dominates the portfolio at {low_share:.1f}%, while `High` is only {high_share:.1f}%. "
+                "That means a good model cannot just chase overall accuracy; it has to preserve sensitivity to the rare high-health segment.",
+            )
+        with story_cols[1]:
+            render_story_card(
+                "Country is a real business context signal",
+                f"The largest country slice is {top_country.title()}, and the target mix varies materially by country. "
+                "That tells us financial health is being shaped by local operating environments, not just firm-level variables.",
+            )
+        with story_cols[2]:
+            top_missing_features = eda_summary.get("top_missing_features", {})
+            if top_missing_features:
+                first_feature, first_share = next(iter(top_missing_features.items()))
+                body = (
+                    f"`{first_feature}` is missing in about {float(first_share) * 100:.1f}% of records. "
+                    "In this project, missingness is treated as business signal rather than simple noise, especially around finance access and informal borrowing."
+                )
+            else:
+                body = "Missingness is widespread across access-to-finance fields, so blank values themselves become part of the business story."
+            render_story_card("Missing data is part of the story", body)
+
+    image_specs = [
+        ("target_distribution.png", "Target distribution", "The portfolio is heavily weighted toward `Low`, making rare-class detection one of the central modeling problems."),
+        ("country_target_share.png", "Country-level target mix", "Country effects are strong enough to justify explicit location-aware modeling rather than assuming a single uniform business environment."),
+        ("missingness_top20.png", "Top missingness features", "The sparsest variables cluster around finance access, insurance, and informal borrowing, which suggests that data availability itself reflects business formalization."),
+        ("monetary_boxplots.png", "Monetary features by class", "Revenue and expense signals are highly skewed, which is why the training pipeline leans on log transforms and robust ratio features."),
+    ]
+    for image_name, heading, caption in image_specs:
+        image_path = EDA_IMAGE_DIR / image_name
+        if image_path.exists():
+            st.markdown(f"**{heading}**")
+            st.image(str(image_path), use_container_width=True)
+            st.caption(caption)
+
+    if not model_comparison.empty:
+        st.markdown("**Model leaderboard**")
+        leaderboard = model_comparison[
+            ["model", "weighted_f1", "macro_f1", "high_f1", "medium_f1", "low_f1"]
+        ].copy()
+        leaderboard = leaderboard.head(8)
+        for metric_name in ["weighted_f1", "macro_f1", "high_f1", "medium_f1", "low_f1"]:
+            leaderboard[metric_name] = leaderboard[metric_name].map(lambda value: f"{value:.3f}")
+        st.dataframe(leaderboard, use_container_width=True, hide_index=True)
+
+        best_row = model_comparison.iloc[0]
+        st.markdown(
+            f"""
+            <div class="story-band">
+                <h3>Why the ensemble won</h3>
+                <p>
+                    The selected model is <strong>{best_row['model']}</strong>, with weighted F1 of
+                    <strong>{best_row['weighted_f1']:.3f}</strong> and macro F1 of
+                    <strong>{best_row['macro_f1']:.3f}</strong>. The ensemble wins because it balances strong `Low`
+                    performance with meaningfully better rare-class handling than simpler baselines.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if report:
+        performance_cols = st.columns(3)
+        for idx, label in enumerate(["Low", "Medium", "High"]):
+            label_block = report.get(label, {})
+            performance_cols[idx].metric(
+                f"{label} F1",
+                f"{float(label_block.get('f1-score', 0.0)):.3f}",
+                delta=f"Recall {float(label_block.get('recall', 0.0)):.3f}",
+            )
+
+    if not subgroup_analysis.empty:
+        st.markdown("**Where the model is strongest and weakest**")
+        country_slice = (
+            subgroup_analysis[subgroup_analysis["segment"] == "country"]
+            .sort_values("macro_f1", ascending=False)
+            .reset_index(drop=True)
+        )
+        if not country_slice.empty:
+            weakest = country_slice.iloc[-1]
+            strongest = country_slice.iloc[0]
+            subgroup_cols = st.columns(2)
+            with subgroup_cols[0]:
+                st.dataframe(country_slice, use_container_width=True, hide_index=True)
+            with subgroup_cols[1]:
+                render_story_card(
+                    "Most reliable market",
+                    f"{strongest['group'].title()} leads with macro F1 of {strongest['macro_f1']:.3f}. "
+                    "That suggests its pattern of business health is more separable under the current feature set.",
+                )
+                render_story_card(
+                    "Primary risk pocket",
+                    f"{weakest['group'].title()} is the weakest slice, with macro F1 of {weakest['macro_f1']:.3f}. "
+                    "This is the clearest place to focus the next round of feature work, calibration, or country-specific modeling.",
+                )
+
+    if eda_report_text:
+        with st.expander("EDA report notes"):
+            st.markdown(eda_report_text)
+
+
 def main() -> None:
     st.set_page_config(
         page_title="SME Financial Health Studio",
@@ -530,24 +759,36 @@ def main() -> None:
     field_profiles = build_field_profiles()
     run_summary = load_run_summary()
 
+    eda_summary = load_eda_summary()
+    class_distribution = eda_summary.get("target_distribution", {}) if eda_summary else {}
+    high_share = float(class_distribution.get("High", 0.0)) * 100
+    low_share = float(class_distribution.get("Low", 0.0)) * 100
+
     st.markdown(
         """
         <section class="hero-card">
             <h1>SME Financial Health Studio</h1>
             <p>
-                Score individual businesses or full CSV batches with the trained SME Financial Health Index model.
-                The interface is built on top of the same feature engineering and inference pipeline used for training.
+                Score individual businesses, explore the portfolio story, and review model evidence from the same
+                SME Financial Health Index pipeline used for training.
             </p>
             <div class="hero-pills">
                 <span class="hero-pill">Single-record scoring</span>
                 <span class="hero-pill">Batch CSV scoring</span>
+                <span class="hero-pill">EDA storytelling</span>
                 <span class="hero-pill">Probability outputs</span>
-                <span class="hero-pill">Artifact upload fallback</span>
+                <span class="hero-pill">Country-level insights</span>
             </div>
         </section>
         """,
         unsafe_allow_html=True,
     )
+
+    hero_metrics = st.columns(4)
+    hero_metrics[0].metric("Selected model", run_summary.get("selected_model", "unknown") if run_summary else "unknown")
+    hero_metrics[1].metric("Best single model", run_summary.get("best_single_model", "unknown") if run_summary else "unknown")
+    hero_metrics[2].metric("Low-class share", f"{low_share:.1f}%")
+    hero_metrics[3].metric("High-class share", f"{high_share:.1f}%")
 
     st.sidebar.header("App controls")
     uploaded_artifact = st.sidebar.file_uploader(
@@ -570,8 +811,8 @@ def main() -> None:
         st.sidebar.markdown(f"Selected model: `{run_summary.get('selected_model', 'unknown')}`")
         st.sidebar.markdown(f"Best single model: `{run_summary.get('best_single_model', 'unknown')}`")
 
-    single_tab, batch_tab, about_tab = st.tabs(
-        ["Single SME", "Batch scoring", "About the app"]
+    single_tab, batch_tab, story_tab, about_tab = st.tabs(
+        ["Single SME", "Batch scoring", "Data story", "About the app"]
     )
 
     with single_tab:
@@ -675,6 +916,9 @@ def main() -> None:
                     )
                 with st.expander("Preview scored rows", expanded=True):
                     st.dataframe(batch_results.head(50), use_container_width=True, hide_index=True)
+
+    with story_tab:
+        render_eda_story()
 
     with about_tab:
         st.subheader("How this frontend works")

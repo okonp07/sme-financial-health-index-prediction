@@ -88,6 +88,8 @@ The app supports:
 
 - single-SME interactive scoring
 - batch CSV uploads with downloadable predictions
+- embedded EDA and business storytelling views
+- model leaderboard and subgroup performance review
 - uploaded `.joblib` artifacts if a local trained artifact is unavailable
 - auto-filled missing batch columns for more forgiving scoring workflows
 
