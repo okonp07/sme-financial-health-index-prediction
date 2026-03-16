@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from html import escape
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -774,16 +775,18 @@ def render_metric_bars(
     rows = []
     for label, value in items:
         width = max(0.0, min(100.0, (float(value) / upper_bound) * 100))
+        safe_label = escape(str(label))
+        safe_value = escape(str(value_format(float(value))))
         rows.append(
-            f"""
-            <div class="metric-bar-row">
-                <div class="metric-bar-label">{label}</div>
-                <div class="metric-bar-track">
-                    <div class="metric-bar-fill" style="width:{width:.2f}%; background:{bar_color};"></div>
-                </div>
-                <div class="metric-bar-value">{value_format(float(value))}</div>
-            </div>
-            """
+            (
+                '<div class="metric-bar-row">'
+                f'<div class="metric-bar-label">{safe_label}</div>'
+                '<div class="metric-bar-track">'
+                f'<div class="metric-bar-fill" style="width:{width:.2f}%; background:{bar_color};"></div>'
+                "</div>"
+                f'<div class="metric-bar-value">{safe_value}</div>'
+                "</div>"
+            )
         )
 
     st.markdown(
