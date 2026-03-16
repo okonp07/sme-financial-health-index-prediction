@@ -47,6 +47,14 @@ MODEL_DISPLAY_NAMES = {
     "weighted_ensemble": "Weighted Ensemble",
 }
 
+NAV_ITEMS = [
+    ("summary", "Executive summary"),
+    ("single", "Single-record scoring"),
+    ("batch", "Batch CSV scoring"),
+    ("story", "Data storytelling"),
+    ("about", "About the app"),
+]
+
 RAW_INPUT_COLUMNS = [
     "ID",
     "country",
@@ -279,11 +287,25 @@ def inject_styles() -> None:
             margin-top: 1rem;
         }
         .hero-pill {
+            color: #fff7ee !important;
             border: 1px solid rgba(255, 247, 238, 0.22);
             background: rgba(255, 247, 238, 0.1);
             border-radius: 999px;
             padding: 0.35rem 0.8rem;
             font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+        }
+        .hero-pill:hover {
+            background: rgba(255, 247, 238, 0.16);
+            border-color: rgba(255, 247, 238, 0.45);
+            transform: translateY(-1px);
+        }
+        .hero-pill.is-active {
+            background: rgba(255, 247, 238, 0.24);
+            border-color: rgba(255, 247, 238, 0.62);
         }
         .section-note {
             border-left: 4px solid #245f7a;
@@ -493,6 +515,25 @@ def load_confusion_matrix() -> dict[str, Any]:
     if not CONFUSION_MATRIX_PATH.exists():
         return {}
     return json.loads(CONFUSION_MATRIX_PATH.read_text())
+
+
+def resolve_active_view() -> str:
+    raw_value = st.query_params.get("view", "summary")
+    if isinstance(raw_value, list):
+        raw_value = raw_value[0] if raw_value else "summary"
+    candidate = str(raw_value).strip().lower() or "summary"
+    valid_views = {key for key, _ in NAV_ITEMS}
+    return candidate if candidate in valid_views else "summary"
+
+
+def render_hero_nav(active_view: str) -> str:
+    pills = []
+    for view_key, label in NAV_ITEMS:
+        active_class = " is-active" if view_key == active_view else ""
+        pills.append(
+            f'<a class="hero-pill{active_class}" href="?view={view_key}" target="_self">{label}</a>'
+        )
+    return "".join(pills)
 
 
 def format_model_label(model_name: Any) -> str:
@@ -1248,9 +1289,10 @@ def main() -> None:
     low_share, high_share = resolve_class_shares(eda_summary, classification_report)
     selected_model_label = resolve_selected_model_label(run_summary, artifact_payload)
     best_single_model_label = resolve_best_single_model_label(run_summary)
+    active_view = resolve_active_view()
 
     st.markdown(
-        """
+        f"""
         <section class="hero-card">
             <h1>SME Financial Health Studio</h1>
             <p>
@@ -1258,11 +1300,7 @@ def main() -> None:
                 SME Financial Health Index pipeline used for training.
             </p>
             <div class="hero-pills">
-                <span class="hero-pill">Single-record scoring</span>
-                <span class="hero-pill">Batch CSV scoring</span>
-                <span class="hero-pill">EDA storytelling</span>
-                <span class="hero-pill">Probability outputs</span>
-                <span class="hero-pill">Country-level insights</span>
+                {render_hero_nav(active_view)}
             </div>
         </section>
         """,
@@ -1280,14 +1318,9 @@ def main() -> None:
     st.sidebar.markdown(f"Selected model: `{selected_model_label}`")
     st.sidebar.markdown(f"Best single model: `{best_single_model_label}`")
 
-    summary_tab, single_tab, batch_tab, story_tab, about_tab = st.tabs(
-        ["Executive summary", "Single SME", "Batch scoring", "Data story", "About the app"]
-    )
-
-    with summary_tab:
+    if active_view == "summary":
         render_executive_summary()
-
-    with single_tab:
+    elif active_view == "single":
         st.subheader("Score one SME at a time")
         single_record = render_single_record_form(field_profiles)
         if single_record is not None:
@@ -1297,8 +1330,7 @@ def main() -> None:
             render_prediction_summary(prediction_frame.iloc[0])
             with st.expander("Preview the submitted record"):
                 st.dataframe(input_df, use_container_width=True, hide_index=True)
-
-    with batch_tab:
+    elif active_view == "batch":
         st.subheader("Score a CSV batch")
         st.markdown(
             "Upload any CSV that contains at least some of the expected SME input columns. "
@@ -1401,11 +1433,9 @@ def main() -> None:
                     )
                 with st.expander("Preview scored rows", expanded=True):
                     st.dataframe(batch_results.head(50), use_container_width=True, hide_index=True)
-
-    with story_tab:
+    elif active_view == "story":
         render_eda_story()
-
-    with about_tab:
+    elif active_view == "about":
         st.subheader("How this frontend works")
         st.markdown(
             """
