@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import altair as alt
 import json
 from io import BytesIO
 from pathlib import Path
@@ -25,6 +26,7 @@ EDA_REPORT_PATH = APP_ROOT / "outputs" / "eda" / "eda_report.md"
 MODEL_COMPARISON_PATH = APP_ROOT / "outputs" / "metrics" / "model_comparison.csv"
 SUBGROUP_ANALYSIS_PATH = APP_ROOT / "outputs" / "metrics" / "subgroup_analysis.csv"
 CLASSIFICATION_REPORT_PATH = APP_ROOT / "outputs" / "metrics" / "classification_report.json"
+CONFUSION_MATRIX_PATH = APP_ROOT / "outputs" / "metrics" / "confusion_matrix.json"
 EDA_IMAGE_DIR = APP_ROOT / "outputs" / "eda"
 
 RAW_INPUT_COLUMNS = [
@@ -191,6 +193,36 @@ FIELD_GROUPS = {
     ],
 }
 
+CLASS_RECOMMENDATIONS = {
+    "Low": {
+        "title": "Stabilize the business first",
+        "summary": "This profile looks financially fragile right now. The best near-term move is to reduce volatility and strengthen cash discipline before taking on more risk.",
+        "actions": [
+            "Tighten weekly cash-flow tracking and separate personal from business spending.",
+            "Prioritize record-keeping, pricing discipline, and repeat-sales channels.",
+            "Review the highest-pressure expenses and reduce informal debt dependence where possible.",
+        ],
+    },
+    "Medium": {
+        "title": "Build resilience deliberately",
+        "summary": "This profile is viable but still exposed. The next step is to convert a workable business into a more resilient one with stronger buffers and better formal systems.",
+        "actions": [
+            "Formalize records, repayment habits, and product-level margin visibility.",
+            "Strengthen access to dependable finance and payment channels.",
+            "Invest in the operational areas that reduce shutdown or cash-flow risk.",
+        ],
+    },
+    "High": {
+        "title": "Protect and scale what is working",
+        "summary": "This profile looks comparatively healthy. The focus should be on protecting existing strengths while scaling in a disciplined way.",
+        "actions": [
+            "Preserve strong financial habits, especially record quality and cost control.",
+            "Use growth capital selectively rather than expanding fixed costs too quickly.",
+            "Invest in insurance, customer retention, and operational continuity to protect momentum.",
+        ],
+    },
+}
+
 
 def inject_styles() -> None:
     st.markdown(
@@ -343,6 +375,13 @@ def load_classification_report() -> dict[str, Any]:
     if not CLASSIFICATION_REPORT_PATH.exists():
         return {}
     return json.loads(CLASSIFICATION_REPORT_PATH.read_text())
+
+
+@st.cache_data(show_spinner=False)
+def load_confusion_matrix() -> dict[str, Any]:
+    if not CONFUSION_MATRIX_PATH.exists():
+        return {}
+    return json.loads(CONFUSION_MATRIX_PATH.read_text())
 
 
 @st.cache_data(show_spinner=False)
@@ -592,6 +631,7 @@ def render_prediction_summary(prediction_row: pd.Series) -> None:
             hide_index=True,
         )
     st.bar_chart(probability_frame.set_index("Class"))
+    render_recommendation_panel(str(prediction_row["Target"]))
 
 
 def render_story_card(title: str, body: str) -> None:
@@ -606,12 +646,238 @@ def render_story_card(title: str, body: str) -> None:
     )
 
 
+def render_recommendation_panel(predicted_class: str) -> None:
+    recommendation = CLASS_RECOMMENDATIONS.get(predicted_class)
+    if not recommendation:
+        return
+
+    st.markdown(
+        f"""
+        <div class="story-band">
+            <h3>Recommended next move: {recommendation['title']}</h3>
+            <p>{recommendation['summary']}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    for action in recommendation["actions"]:
+        st.markdown(f"- {action}")
+
+
+def build_country_mix_chart(eda_summary: dict[str, Any]) -> alt.Chart | None:
+    country_distribution = eda_summary.get("country_distribution", {}) if eda_summary else {}
+    if not country_distribution:
+        return None
+
+    mix_df = pd.DataFrame(
+        {
+            "country": list(country_distribution.keys()),
+            "share": [float(value) for value in country_distribution.values()],
+        }
+    )
+    mix_df["share_label"] = mix_df["share"].map(lambda value: f"{value:.1%}")
+    return (
+        alt.Chart(mix_df)
+        .mark_bar(cornerRadiusTopLeft=8, cornerRadiusTopRight=8, color="#D56C47")
+        .encode(
+            x=alt.X("country:N", title="Country", sort="-y"),
+            y=alt.Y("share:Q", title="Portfolio share", axis=alt.Axis(format="%")),
+            tooltip=["country:N", alt.Tooltip("share:Q", format=".1%")],
+        )
+        .properties(height=320)
+    )
+
+
+def build_country_performance_chart(country_slice: pd.DataFrame) -> alt.Chart | None:
+    if country_slice.empty:
+        return None
+
+    chart_df = country_slice.copy()
+    chart_df["group"] = chart_df["group"].str.title()
+    long_df = chart_df.melt(
+        id_vars=["group"],
+        value_vars=["weighted_f1", "macro_f1"],
+        var_name="metric",
+        value_name="score",
+    )
+    long_df["metric"] = long_df["metric"].map(
+        {"weighted_f1": "Weighted F1", "macro_f1": "Macro F1"}
+    )
+    color_scale = alt.Scale(domain=["Weighted F1", "Macro F1"], range=["#245F7A", "#D56C47"])
+    return (
+        alt.Chart(long_df)
+        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
+        .encode(
+            x=alt.X("group:N", title="Country"),
+            y=alt.Y("score:Q", title="Score", scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("metric:N", scale=color_scale, title="Metric"),
+            xOffset="metric:N",
+            tooltip=["group:N", "metric:N", alt.Tooltip("score:Q", format=".3f")],
+        )
+        .properties(height=340)
+    )
+
+
+def build_confusion_matrix_chart(confusion_payload: dict[str, Any], normalize: bool = False) -> alt.Chart | None:
+    labels = confusion_payload.get("labels", [])
+    matrix = confusion_payload.get("matrix", [])
+    if not labels or not matrix:
+        return None
+
+    matrix_df = pd.DataFrame(matrix, index=labels, columns=labels)
+    if normalize:
+        matrix_plot = matrix_df.div(matrix_df.sum(axis=1).replace(0, 1), axis=0)
+        value_label = "share"
+    else:
+        matrix_plot = matrix_df
+        value_label = "count"
+
+    plot_df = (
+        matrix_plot.reset_index(names="actual")
+        .melt(id_vars="actual", var_name="predicted", value_name=value_label)
+    )
+    plot_df["label"] = plot_df[value_label].map(
+        (lambda value: f"{value:.2f}") if normalize else (lambda value: f"{int(value)}")
+    )
+    color_field = f"{value_label}:Q"
+    return (
+        alt.Chart(plot_df)
+        .mark_rect(cornerRadius=10)
+        .encode(
+            x=alt.X("predicted:N", title="Predicted"),
+            y=alt.Y("actual:N", title="Actual"),
+            color=alt.Color(color_field, scale=alt.Scale(scheme="teals"), title="Value"),
+            tooltip=[
+                "actual:N",
+                "predicted:N",
+                alt.Tooltip(f"{value_label}:Q", format=".2f" if normalize else ","),
+            ],
+        )
+        .properties(height=320)
+    )
+
+
+def build_confusion_matrix_labels(confusion_payload: dict[str, Any], normalize: bool = False) -> alt.Chart | None:
+    labels = confusion_payload.get("labels", [])
+    matrix = confusion_payload.get("matrix", [])
+    if not labels or not matrix:
+        return None
+
+    matrix_df = pd.DataFrame(matrix, index=labels, columns=labels)
+    if normalize:
+        matrix_df = matrix_df.div(matrix_df.sum(axis=1).replace(0, 1), axis=0)
+        value_field = "share"
+        matrix_df = matrix_df.round(2)
+    else:
+        value_field = "count"
+
+    plot_df = (
+        matrix_df.reset_index(names="actual")
+        .melt(id_vars="actual", var_name="predicted", value_name=value_field)
+    )
+    plot_df["label"] = plot_df[value_field].map(
+        (lambda value: f"{value:.2f}") if normalize else (lambda value: f"{int(value)}")
+    )
+    return (
+        alt.Chart(plot_df)
+        .mark_text(fontSize=13, color="#10232F", fontWeight="bold")
+        .encode(
+            x="predicted:N",
+            y="actual:N",
+            text="label:N",
+        )
+    )
+
+
+def render_executive_summary() -> None:
+    eda_summary = load_eda_summary()
+    report = load_classification_report()
+    subgroup_analysis = load_subgroup_analysis()
+
+    st.subheader("Executive summary")
+    st.markdown(
+        """
+        <div class="story-band">
+            <h3>Plain-language view of the portfolio</h3>
+            <p>
+                This app helps assess how financially healthy an SME looks based on business profile, cash pressure,
+                access to finance, owner outlook, and insurance behavior. In simple terms, it helps separate fragile,
+                stable, and stronger business situations so users can respond with the right next action.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    class_distribution = eda_summary.get("target_distribution", {}) if eda_summary else {}
+    high_share = float(class_distribution.get("High", 0.0)) * 100
+    low_share = float(class_distribution.get("Low", 0.0)) * 100
+    medium_share = float(class_distribution.get("Medium", 0.0)) * 100
+
+    summary_cols = st.columns(3)
+    with summary_cols[0]:
+        render_story_card(
+            "What most businesses look like",
+            f"About {low_share:.1f}% of the portfolio falls into the `Low` class, so financially stressed businesses are the dominant pattern in the data.",
+        )
+    with summary_cols[1]:
+        render_story_card(
+            "What the middle looks like",
+            f"Roughly {medium_share:.1f}% of businesses sit in the `Medium` class, which usually means viable operations with clear room to improve resilience.",
+        )
+    with summary_cols[2]:
+        render_story_card(
+            "What strong health looks like",
+            f"Only {high_share:.1f}% of businesses are in the `High` class, so the healthiest firms are relatively rare and need special attention from the model.",
+        )
+
+    class_cols = st.columns(3)
+    for idx, label in enumerate(["Low", "Medium", "High"]):
+        recommendation = CLASS_RECOMMENDATIONS[label]
+        with class_cols[idx]:
+            render_story_card(
+                f"{label}: what it means",
+                f"{recommendation['summary']} Recommended posture: {recommendation['title']}.",
+            )
+
+    if report:
+        macro_score = float(report.get("macro avg", {}).get("f1-score", 0.0))
+        weighted_score = float(report.get("weighted avg", {}).get("f1-score", 0.0))
+        exec_metrics = st.columns(2)
+        exec_metrics[0].metric("Overall weighted F1", f"{weighted_score:.3f}")
+        exec_metrics[1].metric("Balanced class quality", f"{macro_score:.3f}")
+
+    if not subgroup_analysis.empty:
+        country_slice = (
+            subgroup_analysis[subgroup_analysis["segment"] == "country"]
+            .sort_values("macro_f1", ascending=True)
+            .reset_index(drop=True)
+        )
+        if not country_slice.empty:
+            weakest = country_slice.iloc[0]
+            strongest = country_slice.iloc[-1]
+            st.markdown(
+                f"""
+                <div class="story-band">
+                    <h3>Operational takeaway</h3>
+                    <p>
+                        The model is strongest in <strong>{strongest['group'].title()}</strong> and weakest in
+                        <strong>{weakest['group'].title()}</strong>. That means users should treat predictions in the
+                        weakest market as useful guidance, but with a bit more caution than in the stronger markets.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
 def render_eda_story() -> None:
     eda_summary = load_eda_summary()
     report = load_classification_report()
     model_comparison = load_model_comparison()
     subgroup_analysis = load_subgroup_analysis()
     eda_report_text = load_eda_report_text()
+    confusion_payload = load_confusion_matrix()
 
     st.subheader("Data story and model narrative")
     st.markdown(
@@ -669,6 +935,25 @@ def render_eda_story() -> None:
                 body = "Missingness is widespread across access-to-finance fields, so blank values themselves become part of the business story."
             render_story_card("Missing data is part of the story", body)
 
+    country_mix_chart = build_country_mix_chart(eda_summary)
+    country_slice = (
+        subgroup_analysis[subgroup_analysis["segment"] == "country"].sort_values("macro_f1", ascending=False)
+        if not subgroup_analysis.empty
+        else pd.DataFrame()
+    )
+    country_perf_chart = build_country_performance_chart(country_slice) if not country_slice.empty else None
+    if country_mix_chart is not None or country_perf_chart is not None:
+        st.markdown("**Country comparison built directly in the app**")
+        country_cols = st.columns(2)
+        with country_cols[0]:
+            if country_mix_chart is not None:
+                st.altair_chart(country_mix_chart, use_container_width=True)
+                st.caption("Portfolio share by country. This shows where the app is seeing the most business records.")
+        with country_cols[1]:
+            if country_perf_chart is not None:
+                st.altair_chart(country_perf_chart, use_container_width=True)
+                st.caption("Country-level model performance. Lesotho is the clearest opportunity for the next improvement cycle.")
+
     image_specs = [
         ("target_distribution.png", "Target distribution", "The portfolio is heavily weighted toward `Low`, making rare-class detection one of the central modeling problems."),
         ("country_target_share.png", "Country-level target mix", "Country effects are strong enough to justify explicit location-aware modeling rather than assuming a single uniform business environment."),
@@ -716,6 +1001,17 @@ def render_eda_story() -> None:
                 f"{label} F1",
                 f"{float(label_block.get('f1-score', 0.0)):.3f}",
                 delta=f"Recall {float(label_block.get('recall', 0.0)):.3f}",
+            )
+
+    if confusion_payload:
+        st.markdown("**Confusion matrix**")
+        normalize_matrix = st.toggle("Show normalized confusion matrix", value=True)
+        heatmap = build_confusion_matrix_chart(confusion_payload, normalize=normalize_matrix)
+        labels = build_confusion_matrix_labels(confusion_payload, normalize=normalize_matrix)
+        if heatmap is not None and labels is not None:
+            st.altair_chart(heatmap + labels, use_container_width=True)
+            st.caption(
+                "The strongest pattern is reliable `Low` detection, while most errors happen between `Medium` and `High` or between `Medium` and `Low`."
             )
 
     if not subgroup_analysis.empty:
@@ -811,9 +1107,12 @@ def main() -> None:
         st.sidebar.markdown(f"Selected model: `{run_summary.get('selected_model', 'unknown')}`")
         st.sidebar.markdown(f"Best single model: `{run_summary.get('best_single_model', 'unknown')}`")
 
-    single_tab, batch_tab, story_tab, about_tab = st.tabs(
-        ["Single SME", "Batch scoring", "Data story", "About the app"]
+    summary_tab, single_tab, batch_tab, story_tab, about_tab = st.tabs(
+        ["Executive summary", "Single SME", "Batch scoring", "Data story", "About the app"]
     )
+
+    with summary_tab:
+        render_executive_summary()
 
     with single_tab:
         st.subheader("Score one SME at a time")
@@ -896,6 +1195,12 @@ def main() -> None:
                         predictions.drop(columns=[ID_COLUMN]).reset_index(drop=True),
                     ],
                     axis=1,
+                )
+                batch_results["recommendation_title"] = batch_results["Target"].map(
+                    lambda label: CLASS_RECOMMENDATIONS.get(label, {}).get("title", "")
+                )
+                batch_results["recommendation_summary"] = batch_results["Target"].map(
+                    lambda label: CLASS_RECOMMENDATIONS.get(label, {}).get("summary", "")
                 )
                 summary = (
                     batch_results["Target"].value_counts().rename_axis("Predicted class").reset_index(name="Count")
