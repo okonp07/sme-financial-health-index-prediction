@@ -1446,7 +1446,8 @@ def save_training_artifacts(
         "label_encoder": label_encoder,
         "feature_columns": feature_columns,
     }
-    joblib.dump(payload, artifact_path)
+    # Compression keeps the artifact small enough to ship with the app repository.
+    joblib.dump(payload, artifact_path, compress=("xz", 3))
     return artifact_path
 
 

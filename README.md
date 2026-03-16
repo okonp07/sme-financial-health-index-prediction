@@ -79,6 +79,19 @@ The app supports:
 - uploaded `.joblib` artifacts if a local trained artifact is unavailable
 - auto-filled missing batch columns for more forgiving scoring workflows
 
+## Deploy on Streamlit Community Cloud
+
+This repository is already organized for Streamlit Community Cloud deployment.
+
+Use these settings in the Streamlit deployment UI:
+
+- Repository: `okonp07/sme-financial-health-index-prediction`
+- Branch: `main`
+- Main file path: `app.py`
+- Python version: `3.12`
+
+The trained model artifact is stored in `artifacts/trained_pipeline.joblib` in compressed form so the app can run directly from the repository on Community Cloud.
+
 ## Key outputs
 
 - `outputs/eda/eda_report.md`
@@ -96,3 +109,4 @@ The app supports:
 - The code uses only open-source libraries and keeps all preprocessing inside Python.
 - Raw competition data, generated artifacts, and run outputs are kept local and excluded from git in the repo version of this project.
 - The Streamlit app expects a trained artifact at `artifacts/trained_pipeline.joblib`, but it can also load an uploaded artifact from the sidebar.
+- The committed artifact is compressed specifically to keep Streamlit Community Cloud deployment lightweight.

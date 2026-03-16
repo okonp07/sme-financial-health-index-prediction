@@ -10,6 +10,7 @@ catboost_info/
 
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/trained_pipeline.joblib
 
 outputs/*
 !outputs/.gitkeep

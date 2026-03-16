@@ -7,4 +7,4 @@ catboost==1.2.10
 joblib==1.5.2
 matplotlib==3.10.6
 seaborn==0.13.2
-streamlit>=1.37.0,<2.0.0
+streamlit==1.55.0
