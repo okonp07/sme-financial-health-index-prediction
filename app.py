@@ -339,6 +339,35 @@ def inject_styles() -> None:
             font-size: 0.9rem;
             font-weight: 600;
         }
+        div[data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.56);
+            border: 1px solid rgba(22, 50, 74, 0.08);
+            border-radius: 20px;
+            padding: 0.95rem 1rem;
+            min-height: 132px;
+        }
+        div[data-testid="stMetricLabel"] {
+            margin-bottom: 0.35rem;
+        }
+        div[data-testid="stMetricLabel"] p {
+            font-size: 1rem;
+        }
+        div[data-testid="stMetricValue"] {
+            font-size: clamp(2rem, 1.2rem + 2vw, 3rem);
+            line-height: 1.02;
+        }
+        div[data-testid="stMetricValue"] > div {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: unset;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        @media (max-width: 1200px) {
+            div[data-testid="stMetricValue"] {
+                font-size: clamp(1.7rem, 1rem + 2vw, 2.4rem);
+            }
+        }
         .matrix-table {
             width: 100%;
             border-collapse: separate;
