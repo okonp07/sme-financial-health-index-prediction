@@ -16,3 +16,4 @@ outputs/*
 
 data/raw/*.csv
 data/raw/*.zip
+!data/raw/VariableDefinitions.csv

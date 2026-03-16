@@ -9,4 +9,5 @@ Expected files:
 - `SampleSubmission.csv`
 - `VariableDefinitions.csv`
 
-These raw data files are intentionally kept out of git.
+`VariableDefinitions.csv` is tracked because the Streamlit frontend uses it for field descriptions.
+The other raw data files are intentionally kept out of git.

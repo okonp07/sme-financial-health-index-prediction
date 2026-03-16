@@ -66,6 +66,19 @@ Run inference with a saved artifact:
 python predict.py --artifact artifacts/trained_pipeline.joblib --input data/raw/Test.csv --output outputs/submissions/prediction_output.csv
 ```
 
+Launch the interactive Streamlit frontend:
+
+```bash
+python -m streamlit run app.py
+```
+
+The app supports:
+
+- single-SME interactive scoring
+- batch CSV uploads with downloadable predictions
+- uploaded `.joblib` artifacts if a local trained artifact is unavailable
+- auto-filled missing batch columns for more forgiving scoring workflows
+
 ## Key outputs
 
 - `outputs/eda/eda_report.md`
@@ -74,6 +87,7 @@ python predict.py --artifact artifacts/trained_pipeline.joblib --input data/raw/
 - `outputs/metrics/confusion_matrix.json`
 - `artifacts/trained_pipeline.joblib`
 - `outputs/submissions/submission.csv`
+- `app.py`
 
 ## Notes
 
@@ -81,3 +95,4 @@ python predict.py --artifact artifacts/trained_pipeline.joblib --input data/raw/
 - Country effects are strong enough to preserve location information explicitly in the feature set.
 - The code uses only open-source libraries and keeps all preprocessing inside Python.
 - Raw competition data, generated artifacts, and run outputs are kept local and excluded from git in the repo version of this project.
+- The Streamlit app expects a trained artifact at `artifacts/trained_pipeline.joblib`, but it can also load an uploaded artifact from the sidebar.
