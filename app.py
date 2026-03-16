@@ -29,6 +29,24 @@ CLASSIFICATION_REPORT_PATH = APP_ROOT / "outputs" / "metrics" / "classification_
 CONFUSION_MATRIX_PATH = APP_ROOT / "outputs" / "metrics" / "confusion_matrix.json"
 EDA_IMAGE_DIR = APP_ROOT / "outputs" / "eda"
 
+MODEL_DISPLAY_NAMES = {
+    "weighted_ensemble_optimized": "Weighted Ensemble",
+    "binary_guided_ensemble": "Binary-Guided Ensemble",
+    "geo_weighted_blend": "Geo-Weighted Blend",
+    "class_specialist_ensemble": "Class-Specialist Ensemble",
+    "soft_voting_top3": "Top-3 Soft Voting",
+    "stacked_logistic_top_models": "Stacked Logistic Blend",
+    "extra_trees": "Extra Trees",
+    "random_forest": "Random Forest",
+    "logistic_regression": "Logistic Regression",
+    "xgboost": "XGBoost",
+    "xgboost_tuned": "XGBoost Tuned",
+    "lightgbm": "LightGBM",
+    "lightgbm_tuned": "LightGBM Tuned",
+    "catboost": "CatBoost",
+    "weighted_ensemble": "Weighted Ensemble",
+}
+
 RAW_INPUT_COLUMNS = [
     "ID",
     "country",
@@ -472,17 +490,29 @@ def load_confusion_matrix() -> dict[str, Any]:
     return json.loads(CONFUSION_MATRIX_PATH.read_text())
 
 
+def format_model_label(model_name: Any) -> str:
+    raw_name = str(model_name or "").strip()
+    if not raw_name or raw_name.lower() == "unknown":
+        return "Unknown"
+    if raw_name in MODEL_DISPLAY_NAMES:
+        return MODEL_DISPLAY_NAMES[raw_name]
+    if raw_name.endswith("_tuned"):
+        base_name = raw_name.removesuffix("_tuned")
+        return f"{MODEL_DISPLAY_NAMES.get(base_name, base_name.replace('_', ' ').title())} Tuned"
+    return raw_name.replace("_", " ").title()
+
+
 def resolve_selected_model_label(run_summary: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
     if run_summary.get("selected_model"):
-        return str(run_summary["selected_model"])
+        return format_model_label(run_summary["selected_model"])
     if artifact_payload is None:
-        return "unknown"
+        return "Unknown"
     model_artifact = artifact_payload.get("model_artifact", {})
-    return str(model_artifact.get("artifact_type", "unknown"))
+    return format_model_label(model_artifact.get("artifact_type", "unknown"))
 
 
 def resolve_best_single_model_label(run_summary: dict[str, Any]) -> str:
-    return str(run_summary.get("best_single_model", "unknown"))
+    return format_model_label(run_summary.get("best_single_model", "unknown"))
 
 
 def resolve_class_shares(
@@ -1109,6 +1139,7 @@ def render_eda_story() -> None:
             ["model", "weighted_f1", "macro_f1", "high_f1", "medium_f1", "low_f1"]
         ].copy()
         leaderboard = leaderboard.head(8)
+        leaderboard["model"] = leaderboard["model"].map(format_model_label)
         for metric_name in ["weighted_f1", "macro_f1", "high_f1", "medium_f1", "low_f1"]:
             leaderboard[metric_name] = leaderboard[metric_name].map(lambda value: f"{value:.3f}")
         st.dataframe(leaderboard, use_container_width=True, hide_index=True)
@@ -1119,7 +1150,7 @@ def render_eda_story() -> None:
             <div class="story-band">
                 <h3>Why the ensemble won</h3>
                 <p>
-                    The selected model is <strong>{best_row['model']}</strong>, with weighted F1 of
+                    The selected model is <strong>{format_model_label(best_row['model'])}</strong>, with weighted F1 of
                     <strong>{best_row['weighted_f1']:.3f}</strong> and macro F1 of
                     <strong>{best_row['macro_f1']:.3f}</strong>. The ensemble wins because it balances strong `Low`
                     performance with meaningfully better rare-class handling than simpler baselines.
