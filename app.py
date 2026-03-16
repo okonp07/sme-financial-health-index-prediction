@@ -371,19 +371,24 @@ def inject_styles() -> None:
             font-size: 1rem;
         }
         div[data-testid="stMetricValue"] {
-            font-size: clamp(2rem, 1.2rem + 2vw, 3rem);
-            line-height: 1.02;
+            font-size: clamp(1.45rem, 0.95rem + 1.5vw, 2.3rem);
+            line-height: 1.08;
         }
-        div[data-testid="stMetricValue"] > div {
+        div[data-testid="stMetricValue"] > div,
+        div[data-testid="stMetricValue"] p,
+        div[data-testid="stMetricValue"] label,
+        div[data-testid="stMetricValue"] span {
             white-space: normal;
             overflow: visible;
-            text-overflow: unset;
-            overflow-wrap: anywhere;
-            word-break: break-word;
+            text-overflow: clip;
+            overflow-wrap: break-word;
+            word-break: normal;
+            font-size: inherit;
+            line-height: inherit;
         }
         @media (max-width: 1200px) {
             div[data-testid="stMetricValue"] {
-                font-size: clamp(1.7rem, 1rem + 2vw, 2.4rem);
+                font-size: clamp(1.25rem, 0.85rem + 1.2vw, 1.9rem);
             }
         }
         .matrix-table {
