@@ -82,7 +82,9 @@ def build_sklearn_preprocessor(feature_frame: pd.DataFrame) -> ColumnTransformer
                 "num",
                 Pipeline(
                     steps=[
-                        ("imputer", SimpleImputer(strategy="median")),
+                        # Some country-specific folds have numeric columns that are entirely missing.
+                        # Keep those columns in the pipeline instead of dropping them at fit time.
+                        ("imputer", SimpleImputer(strategy="median", keep_empty_features=True)),
                         ("scaler", StandardScaler()),
                     ]
                 ),
