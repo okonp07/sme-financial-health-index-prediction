@@ -48,6 +48,18 @@ Model selection defaults to `weighted_f1`, while also considering `macro_f1` to 
 
 ## Run the project
 
+Install the slimmer runtime dependencies for the app:
+
+```bash
+pip install -r requirements.txt
+```
+
+Install the full training stack when you want to retrain or regenerate EDA:
+
+```bash
+pip install -r requirements-train.txt
+```
+
 Generate EDA outputs:
 
 ```bash
@@ -91,6 +103,7 @@ Use these settings in the Streamlit deployment UI:
 - Python version: `3.12`
 
 The trained model artifact is stored in `artifacts/trained_pipeline.joblib` in compressed form so the app can run directly from the repository on Community Cloud.
+Streamlit Community Cloud should use the lighter `requirements.txt`; the heavier training-only packages live in `requirements-train.txt`.
 
 ## Key outputs
 

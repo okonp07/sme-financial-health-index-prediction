@@ -10,10 +10,8 @@ os.environ.setdefault("LOKY_MAX_CPU_COUNT", "8")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 import joblib
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from catboost import CatBoostClassifier
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -118,6 +116,18 @@ def prepare_for_native_boosters(frame: pd.DataFrame) -> pd.DataFrame:
     return prepared
 
 
+def _make_lightgbm_classifier(**kwargs: Any) -> Any:
+    import lightgbm as lgb
+
+    return lgb.LGBMClassifier(**kwargs)
+
+
+def _make_catboost_classifier(**kwargs: Any) -> Any:
+    from catboost import CatBoostClassifier
+
+    return CatBoostClassifier(**kwargs)
+
+
 def create_model_factories(feature_frame: pd.DataFrame) -> dict[str, Any]:
     preprocessor = build_sklearn_preprocessor(feature_frame)
 
@@ -168,7 +178,7 @@ def create_model_factories(feature_frame: pd.DataFrame) -> dict[str, Any]:
                 ),
             ]
         ),
-        "lightgbm": lambda: lgb.LGBMClassifier(
+        "lightgbm": lambda: _make_lightgbm_classifier(
             objective="multiclass",
             n_estimators=350,
             learning_rate=0.04,
@@ -181,7 +191,7 @@ def create_model_factories(feature_frame: pd.DataFrame) -> dict[str, Any]:
             class_weight="balanced",
             verbose=-1,
         ),
-        "catboost": lambda: CatBoostClassifier(
+        "catboost": lambda: _make_catboost_classifier(
             loss_function="MultiClass",
             eval_metric="TotalF1",
             auto_class_weights="Balanced",
@@ -236,7 +246,7 @@ def create_model_factories(feature_frame: pd.DataFrame) -> dict[str, Any]:
                 ),
             ]
         ),
-        "lightgbm_tuned": lambda: lgb.LGBMClassifier(
+        "lightgbm_tuned": lambda: _make_lightgbm_classifier(
             objective="multiclass",
             n_estimators=450,
             learning_rate=0.035,
