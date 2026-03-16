@@ -1,0 +1,37 @@
+{
+  "shape": {
+    "rows": 9618,
+    "columns": 39
+  },
+  "target_distribution": {
+    "Low": 0.6529,
+    "Medium": 0.2982,
+    "High": 0.0489
+  },
+  "country_distribution": {
+    "eswatini": 0.278,
+    "zimbabwe": 0.2716,
+    "malawi": 0.2483,
+    "lesotho": 0.2021
+  },
+  "top_missing_features": {
+    "uses_informal_lender": 0.4667,
+    "uses_friends_family_savings": 0.4666,
+    "motivation_make_more_money": 0.4461,
+    "funeral_insurance": 0.4354,
+    "medical_insurance": 0.4354,
+    "business_age_months": 0.4274,
+    "future_risk_theft_stock": 0.4263,
+    "has_debit_card": 0.4162,
+    "has_internet_banking": 0.4162,
+    "has_loan_account": 0.4158,
+    "current_problem_cash_flow": 0.3928,
+    "marketing_word_of_mouth": 0.3842,
+    "problem_sourcing_money": 0.3729,
+    "has_mobile_money": 0.286,
+    "attitude_more_successful_next_year": 0.2716
+  },
+  "duplicate_ids": 0,
+  "duplicate_rows": 0,
+  "variable_definitions_loaded": 39
+}

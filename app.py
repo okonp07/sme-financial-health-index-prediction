@@ -442,6 +442,39 @@ def load_confusion_matrix() -> dict[str, Any]:
     return json.loads(CONFUSION_MATRIX_PATH.read_text())
 
 
+def resolve_selected_model_label(run_summary: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
+    if run_summary.get("selected_model"):
+        return str(run_summary["selected_model"])
+    if artifact_payload is None:
+        return "unknown"
+    model_artifact = artifact_payload.get("model_artifact", {})
+    return str(model_artifact.get("artifact_type", "unknown"))
+
+
+def resolve_best_single_model_label(run_summary: dict[str, Any]) -> str:
+    return str(run_summary.get("best_single_model", "unknown"))
+
+
+def resolve_class_shares(
+    eda_summary: dict[str, Any],
+    classification_report: dict[str, Any],
+) -> tuple[float, float]:
+    class_distribution = eda_summary.get("target_distribution", {}) if eda_summary else {}
+    if class_distribution:
+        low_share = float(class_distribution.get("Low", 0.0)) * 100
+        high_share = float(class_distribution.get("High", 0.0)) * 100
+        return low_share, high_share
+
+    supports = {
+        label: float(classification_report.get(label, {}).get("support", 0.0))
+        for label in ["High", "Low", "Medium"]
+    }
+    total_support = sum(supports.values())
+    if total_support > 0:
+        return (supports["Low"] / total_support) * 100, (supports["High"] / total_support) * 100
+    return 0.0, 0.0
+
+
 @st.cache_data(show_spinner=False)
 def load_model_comparison() -> pd.DataFrame:
     if not MODEL_COMPARISON_PATH.exists():
@@ -1127,10 +1160,26 @@ def main() -> None:
     field_profiles = build_field_profiles()
     run_summary = load_run_summary()
 
+    st.sidebar.header("App controls")
+    uploaded_artifact = st.sidebar.file_uploader(
+        "Optional model artifact upload",
+        type=["joblib"],
+        help="Use this if `artifacts/trained_pipeline.joblib` is not available locally.",
+    )
+
+    artifact_payload, artifact_source = resolve_artifact(uploaded_artifact)
+    if artifact_payload is None:
+        st.error(
+            "No trained model artifact was found. Run `python train.py` to create "
+            "`artifacts/trained_pipeline.joblib`, or upload a `.joblib` artifact in the sidebar."
+        )
+        st.stop()
+
     eda_summary = load_eda_summary()
-    class_distribution = eda_summary.get("target_distribution", {}) if eda_summary else {}
-    high_share = float(class_distribution.get("High", 0.0)) * 100
-    low_share = float(class_distribution.get("Low", 0.0)) * 100
+    classification_report = load_classification_report()
+    low_share, high_share = resolve_class_shares(eda_summary, classification_report)
+    selected_model_label = resolve_selected_model_label(run_summary, artifact_payload)
+    best_single_model_label = resolve_best_single_model_label(run_summary)
 
     st.markdown(
         """
@@ -1153,31 +1202,15 @@ def main() -> None:
     )
 
     hero_metrics = st.columns(4)
-    hero_metrics[0].metric("Selected model", run_summary.get("selected_model", "unknown") if run_summary else "unknown")
-    hero_metrics[1].metric("Best single model", run_summary.get("best_single_model", "unknown") if run_summary else "unknown")
+    hero_metrics[0].metric("Selected model", selected_model_label)
+    hero_metrics[1].metric("Best single model", best_single_model_label)
     hero_metrics[2].metric("Low-class share", f"{low_share:.1f}%")
     hero_metrics[3].metric("High-class share", f"{high_share:.1f}%")
 
-    st.sidebar.header("App controls")
-    uploaded_artifact = st.sidebar.file_uploader(
-        "Optional model artifact upload",
-        type=["joblib"],
-        help="Use this if `artifacts/trained_pipeline.joblib` is not available locally.",
-    )
-
-    artifact_payload, artifact_source = resolve_artifact(uploaded_artifact)
-    if artifact_payload is None:
-        st.error(
-            "No trained model artifact was found. Run `python train.py` to create "
-            "`artifacts/trained_pipeline.joblib`, or upload a `.joblib` artifact in the sidebar."
-        )
-        st.stop()
-
     st.sidebar.success("Prediction engine ready")
     st.sidebar.caption(artifact_source)
-    if run_summary:
-        st.sidebar.markdown(f"Selected model: `{run_summary.get('selected_model', 'unknown')}`")
-        st.sidebar.markdown(f"Best single model: `{run_summary.get('best_single_model', 'unknown')}`")
+    st.sidebar.markdown(f"Selected model: `{selected_model_label}`")
+    st.sidebar.markdown(f"Best single model: `{best_single_model_label}`")
 
     summary_tab, single_tab, batch_tab, story_tab, about_tab = st.tabs(
         ["Executive summary", "Single SME", "Batch scoring", "Data story", "About the app"]

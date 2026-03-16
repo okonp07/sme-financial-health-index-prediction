@@ -1,0 +1,130 @@
+{
+  "best_single_model_name": "extra_trees",
+  "best_model_name": "weighted_ensemble_optimized",
+  "top_models_for_ensemble": [
+    "extra_trees",
+    "xgboost",
+    "xgboost_tuned",
+    "random_forest"
+  ],
+  "optimized_ensemble_weights": [
+    0.4,
+    0.45,
+    0.0,
+    0.15
+  ],
+  "optimized_ensemble_class_adjustments": [
+    1.15,
+    1.0,
+    0.95
+  ],
+  "stacking_members": [
+    "extra_trees",
+    "xgboost",
+    "xgboost_tuned",
+    "random_forest"
+  ],
+  "country_specialist_model_name": "xgboost_tuned",
+  "country_order": [
+    "eswatini",
+    "lesotho",
+    "malawi",
+    "zimbabwe"
+  ],
+  "country_strategy_counter": {
+    "eswatini": {
+      "country_only": 5,
+      "weighted_specialist": 0
+    },
+    "lesotho": {
+      "country_only": 0,
+      "weighted_specialist": 5
+    },
+    "malawi": {
+      "country_only": 5,
+      "weighted_specialist": 0
+    },
+    "zimbabwe": {
+      "country_only": 5,
+      "weighted_specialist": 0
+    }
+  },
+  "geo_weighted_blend_summary": {
+    "weighted_f1": 0.8761121496170762,
+    "macro_f1": 0.816225289582354,
+    "micro_f1": 0.8802245789145352,
+    "high_f1": 0.7348394768133175,
+    "low_f1": 0.9278397798501758,
+    "medium_f1": 0.7859966120835686,
+    "source_weights": [
+      0.9500000000000001,
+      0.04999999999999993
+    ],
+    "class_adjustments": [
+      1.05,
+      1.0,
+      1.0
+    ],
+    "specialist_model_name": "xgboost_tuned",
+    "country_strategy_counter": {
+      "eswatini": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      },
+      "lesotho": {
+        "country_only": 0,
+        "weighted_specialist": 5
+      },
+      "malawi": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      },
+      "zimbabwe": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      }
+    }
+  },
+  "geo_hybrid_stacker_summary": {
+    "weighted_f1": 0.8552749575980645,
+    "macro_f1": 0.7788992683192228,
+    "micro_f1": 0.8535038469536286,
+    "high_f1": 0.6666666666666666,
+    "low_f1": 0.9153141571589266,
+    "medium_f1": 0.7547169811320755,
+    "specialist_model_name": "xgboost_tuned",
+    "country_strategy_counter": {
+      "eswatini": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      },
+      "lesotho": {
+        "country_only": 0,
+        "weighted_specialist": 5
+      },
+      "malawi": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      },
+      "zimbabwe": {
+        "country_only": 5,
+        "weighted_specialist": 0
+      }
+    }
+  },
+  "binary_guidance_params": {
+    "lambda_high": 0.2,
+    "lambda_hm": 0.15,
+    "high_scale": 1.0
+  },
+  "class_specialist_map": {
+    "High": "xgboost",
+    "Low": "xgboost_tuned",
+    "Medium": "extra_trees"
+  },
+  "class_specialist_scales": {
+    "High": 1.1,
+    "Medium": 0.95,
+    "Low": 1.0
+  }
+}

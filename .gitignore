@@ -14,6 +14,22 @@ artifacts/*
 
 outputs/*
 !outputs/.gitkeep
+!outputs/eda/
+!outputs/eda/country_target_share.png
+!outputs/eda/eda_report.md
+!outputs/eda/eda_summary.json
+!outputs/eda/missingness_top20.png
+!outputs/eda/monetary_boxplots.png
+!outputs/eda/numeric_correlation.png
+!outputs/eda/target_distribution.png
+!outputs/metrics/
+!outputs/metrics/classification_report.json
+!outputs/metrics/confusion_matrix.json
+!outputs/metrics/fold_scores.csv
+!outputs/metrics/model_comparison.csv
+!outputs/metrics/model_selection.json
+!outputs/metrics/run_summary.json
+!outputs/metrics/subgroup_analysis.csv
 
 data/raw/*.csv
 data/raw/*.zip

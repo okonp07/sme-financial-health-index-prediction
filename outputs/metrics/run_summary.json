@@ -1,0 +1,6 @@
+{
+  "selected_model": "weighted_ensemble_optimized",
+  "best_single_model": "extra_trees",
+  "artifact_path": "/Users/researchanddevelopment2/Documents/Zindi/sme-financial-health-index-prediction/artifacts/trained_pipeline.joblib",
+  "submission_path": "/Users/researchanddevelopment2/Documents/Zindi/sme-financial-health-index-prediction/outputs/submissions/submission.csv"
+}
