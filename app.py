@@ -286,14 +286,19 @@ def inject_styles() -> None:
             gap: 0.7rem;
             margin-top: 1rem;
         }
-        .hero-pill {
+        .hero-pill,
+        .hero-pill:link,
+        .hero-pill:visited,
+        .hero-pill:hover,
+        .hero-pill:active,
+        .hero-pill:focus {
             color: #fff7ee !important;
             border: 1px solid rgba(255, 247, 238, 0.22);
             background: rgba(255, 247, 238, 0.1);
             border-radius: 999px;
             padding: 0.35rem 0.8rem;
             font-size: 0.85rem;
-            text-decoration: none;
+            text-decoration: none !important;
             display: inline-flex;
             align-items: center;
             transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
