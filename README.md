@@ -2,6 +2,16 @@
 
 End-to-end machine learning project for predicting SME Financial Health Index (`Low`, `Medium`, `High`) from structured survey and business data. The workflow is designed for reproducibility, modularity, and strong multiclass F1 performance.
 
+## Live Streamlit App
+
+> [!IMPORTANT]
+> Open the deployed app here:
+> [https://sme-financial-health-index-prediction-pqrmktnkw3qrwcp6fnurex.streamlit.app/~/+/?view=summary](https://sme-financial-health-index-prediction-pqrmktnkw3qrwcp6fnurex.streamlit.app/~/+/?view=summary)
+
+<p align="center">
+  <a href="https://sme-financial-health-index-prediction-pqrmktnkw3qrwcp6fnurex.streamlit.app/~/+/?view=summary"><strong>Launch the SME Financial Health Streamlit App</strong></a>
+</p>
+
 ## Project layout
 
 - `data/raw/`: provided Zindi source files
