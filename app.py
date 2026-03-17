@@ -312,6 +312,29 @@ def inject_styles() -> None:
             background: rgba(255, 247, 238, 0.24);
             border-color: rgba(255, 247, 238, 0.62);
         }
+        .sidebar-action,
+        .sidebar-action:link,
+        .sidebar-action:visited,
+        .sidebar-action:hover,
+        .sidebar-action:active,
+        .sidebar-action:focus {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            margin: 0.35rem 0 0.55rem 0;
+            padding: 0.6rem 0.9rem;
+            border-radius: 0.7rem;
+            border: 1px solid rgba(36, 95, 122, 0.18);
+            background: linear-gradient(135deg, #245f7a 0%, #1b4f66 100%);
+            color: #fffaf4 !important;
+            text-decoration: none !important;
+            font-weight: 700;
+            box-shadow: 0 10px 24px rgba(27, 79, 102, 0.14);
+        }
+        .sidebar-action:hover {
+            filter: brightness(1.03);
+        }
         .section-note {
             border-left: 4px solid #245f7a;
             background: rgba(36, 95, 122, 0.08);
@@ -539,11 +562,6 @@ def render_hero_nav(active_view: str) -> str:
             f'<a class="hero-pill{active_class}" href="?view={view_key}" target="_self">{label}</a>'
         )
     return "".join(pills)
-
-
-def navigate_to_view(view_key: str) -> None:
-    st.query_params["view"] = view_key
-    st.rerun()
 
 
 def format_model_label(model_name: Any) -> str:
@@ -1276,7 +1294,6 @@ def main() -> None:
     )
     inject_styles()
 
-    field_profiles = build_field_profiles()
     run_summary = load_run_summary()
 
     st.sidebar.header("App controls")
@@ -1324,8 +1341,10 @@ def main() -> None:
     hero_metrics[3].metric("High-class share", f"{high_share:.1f}%")
 
     st.sidebar.success("Model artifact loaded")
-    if st.sidebar.button("Prediction engine ready", use_container_width=True, type="primary"):
-        navigate_to_view("single")
+    st.sidebar.markdown(
+        '<a class="sidebar-action" href="?view=single#prediction-engine" target="_self">Prediction engine ready</a>',
+        unsafe_allow_html=True,
+    )
     st.sidebar.caption(artifact_source)
     st.sidebar.markdown(f"Selected model: `{selected_model_label}`")
     st.sidebar.markdown(f"Best single model: `{best_single_model_label}`")
@@ -1333,6 +1352,8 @@ def main() -> None:
     if active_view == "summary":
         render_executive_summary()
     elif active_view == "single":
+        field_profiles = build_field_profiles()
+        st.markdown('<div id="prediction-engine"></div>', unsafe_allow_html=True)
         st.subheader("Score one SME at a time")
         single_record = render_single_record_form(field_profiles)
         if single_record is not None:
@@ -1343,6 +1364,7 @@ def main() -> None:
             with st.expander("Preview the submitted record"):
                 st.dataframe(input_df, use_container_width=True, hide_index=True)
     elif active_view == "batch":
+        field_profiles = build_field_profiles()
         st.subheader("Score a CSV batch")
         st.markdown(
             "Upload any CSV that contains at least some of the expected SME input columns. "
