@@ -541,6 +541,11 @@ def render_hero_nav(active_view: str) -> str:
     return "".join(pills)
 
 
+def navigate_to_view(view_key: str) -> None:
+    st.query_params["view"] = view_key
+    st.rerun()
+
+
 def format_model_label(model_name: Any) -> str:
     raw_name = str(model_name or "").strip()
     if not raw_name or raw_name.lower() == "unknown":
@@ -1318,7 +1323,9 @@ def main() -> None:
     hero_metrics[2].metric("Low-class share", f"{low_share:.1f}%")
     hero_metrics[3].metric("High-class share", f"{high_share:.1f}%")
 
-    st.sidebar.success("Prediction engine ready")
+    st.sidebar.success("Model artifact loaded")
+    if st.sidebar.button("Prediction engine ready", use_container_width=True, type="primary"):
+        navigate_to_view("single")
     st.sidebar.caption(artifact_source)
     st.sidebar.markdown(f"Selected model: `{selected_model_label}`")
     st.sidebar.markdown(f"Best single model: `{best_single_model_label}`")
