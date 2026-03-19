@@ -1420,7 +1420,7 @@ def render_about_page() -> None:
             "This app also demonstrates what a competition solution looks like when moved from notebook experimentation into a reusable product-style interface.",
         )
 
-    author_cols = st.columns([0.85, 1.55], vertical_alignment="top")
+    author_cols = st.columns([0.85, 1.55], vertical_alignment="center")
     with author_cols[0]:
         if AUTHOR_IMAGE_PATH.exists():
             st.image(str(AUTHOR_IMAGE_PATH), use_container_width=True)
