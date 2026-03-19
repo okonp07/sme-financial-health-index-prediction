@@ -28,6 +28,7 @@ SUBGROUP_ANALYSIS_PATH = APP_ROOT / "outputs" / "metrics" / "subgroup_analysis.c
 CLASSIFICATION_REPORT_PATH = APP_ROOT / "outputs" / "metrics" / "classification_report.json"
 CONFUSION_MATRIX_PATH = APP_ROOT / "outputs" / "metrics" / "confusion_matrix.json"
 EDA_IMAGE_DIR = APP_ROOT / "outputs" / "eda"
+AUTHOR_IMAGE_PATH = APP_ROOT / "assets" / "okon_prince.png"
 
 MODEL_DISPLAY_NAMES = {
     "weighted_ensemble_optimized": "Weighted Ensemble",
@@ -52,7 +53,7 @@ NAV_ITEMS = [
     ("single", "Single-record scoring"),
     ("batch", "Batch CSV scoring"),
     ("story", "Data storytelling"),
-    ("about", "About the app"),
+    ("about", "About"),
 ]
 
 RAW_INPUT_COLUMNS = [
@@ -374,6 +375,51 @@ def inject_styles() -> None:
             margin: 0;
             color: #344754;
             line-height: 1.6;
+        }
+        .about-author-card {
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(22, 50, 74, 0.08);
+            border-radius: 24px;
+            padding: 1.2rem 1.25rem;
+            box-shadow: 0 12px 28px rgba(22, 50, 74, 0.08);
+        }
+        .about-author-card h3 {
+            margin: 0;
+            color: #16324a;
+        }
+        .about-author-role {
+            margin: 0.3rem 0 1rem 0;
+            color: #4a5f6c;
+            font-weight: 700;
+        }
+        .about-author-card p {
+            color: #31424d;
+            line-height: 1.7;
+            margin: 0 0 0.9rem 0;
+        }
+        .about-quote {
+            border-left: 4px solid #d56c47;
+            background: rgba(213, 108, 71, 0.08);
+            border-radius: 16px;
+            padding: 0.9rem 1rem;
+            color: #16324a;
+            font-weight: 700;
+        }
+        .app-footer {
+            margin: 2.2rem auto 0 auto;
+            padding: 1.15rem 1rem 1.4rem 1rem;
+            text-align: center;
+            color: #51636f;
+            line-height: 1.75;
+            border-top: 1px solid rgba(22, 50, 74, 0.12);
+            max-width: 64rem;
+        }
+        .app-footer a,
+        .app-footer a:link,
+        .app-footer a:visited {
+            color: #245f7a !important;
+            text-decoration: none !important;
+            font-weight: 700;
         }
         .metric-bar-list {
             margin-top: 0.3rem;
@@ -1286,6 +1332,140 @@ def render_eda_story() -> None:
             st.markdown(eda_report_text)
 
 
+def render_about_page() -> None:
+    st.subheader("About")
+    st.markdown(
+        """
+        <div class="story-band">
+            <h3>About this project</h3>
+            <p>
+                This application productionizes a multiclass machine learning solution for the data.org Financial
+                Health Prediction Zindi challenge. The goal is to estimate whether an SME is in a <strong>Low</strong>,
+                <strong>Medium</strong>, or <strong>High</strong> financial health state using structured business,
+                owner, finance, insurance, and operating-context signals.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    overview_cols = st.columns(3)
+    with overview_cols[0]:
+        render_story_card(
+            "What the model solves",
+            "The solution helps separate financially fragile businesses from more stable and more resilient ones so support, intervention, and risk decisions can be better targeted.",
+        )
+    with overview_cols[1]:
+        render_story_card(
+            "What the prediction means",
+            "A prediction is not just a score; it is a categorized view of financial health based on patterns in cash pressure, formality, outlook, insurance behavior, and access to finance.",
+        )
+    with overview_cols[2]:
+        render_story_card(
+            "Why this app matters",
+            "The app turns a competition model into a usable product interface where non-technical users can score SMEs, inspect evidence, and understand the portfolio story.",
+        )
+
+    st.markdown("### Solution overview")
+    st.markdown(
+        """
+        This solution was built as an end-to-end machine learning pipeline and then deployed as an interactive
+        Streamlit application.
+
+        1. **Data preparation:** Raw SME survey data is loaded, cleaned, and normalized so inconsistent categories,
+        blanks, and response variants can be handled consistently.
+        2. **Feature engineering:** The pipeline creates additional business-health signals such as financial ratios,
+        maturity indicators, access-to-finance counts, missingness markers, and transformed monetary variables.
+        3. **Modeling and selection:** Multiple candidate models are benchmarked, including tree-based models and
+        linear baselines, then compared using weighted and macro F1 metrics suited to the class imbalance in the
+        challenge.
+        4. **Final production artifact:** The selected trained pipeline is saved as a reusable artifact so inference
+        in the app uses the exact same preprocessing and modeling logic used during training.
+        5. **Deployment layer:** The Streamlit app wraps that artifact in a guided user interface for single-record
+        scoring, batch scoring, EDA storytelling, subgroup review, and business-facing interpretation.
+        """
+    )
+
+    st.markdown("### How the app works")
+    st.markdown(
+        """
+        - Uses the saved trained artifact and the shared Python inference pipeline.
+        - Supports both one-record interactive scoring and CSV batch scoring.
+        - Returns the predicted class plus per-class probabilities.
+        - Accepts partial batch uploads by auto-filling missing feature columns.
+        - Includes an executive-summary landing page for non-technical users.
+        - Embeds model evaluation outputs such as confusion matrix views, leaderboard comparisons, and country-level analysis.
+        - Allows an uploaded `.joblib` artifact if a local trained artifact is unavailable.
+        """
+    )
+
+    st.markdown("### What users can do here")
+    capability_cols = st.columns(2)
+    with capability_cols[0]:
+        render_story_card(
+            "Operational scoring",
+            "Users can score a single SME interactively, inspect class probabilities, and receive recommendation guidance tied to the predicted financial health class.",
+        )
+        render_story_card(
+            "Batch decision support",
+            "Teams can upload a CSV file, run batch scoring, and download enriched outputs that include predicted classes, probabilities, and recommendation summaries.",
+        )
+    with capability_cols[1]:
+        render_story_card(
+            "Model storytelling",
+            "The Data Story section explains the class distribution, country mix, subgroup performance, confusion patterns, and model-selection evidence behind the solution.",
+        )
+        render_story_card(
+            "Reusable deployment pattern",
+            "This app also demonstrates what a competition solution looks like when moved from notebook experimentation into a reusable product-style interface.",
+        )
+
+    st.markdown("### About the author")
+    author_cols = st.columns([0.85, 1.55], vertical_alignment="center")
+    with author_cols[0]:
+        if AUTHOR_IMAGE_PATH.exists():
+            st.image(str(AUTHOR_IMAGE_PATH), use_container_width=True)
+    with author_cols[1]:
+        st.markdown(
+            """
+            <div class="about-author-card">
+                <h3>Okon Prince</h3>
+                <div class="about-author-role">Senior Data Scientist at MIVA Open University | AI Engineer &amp; Data Scientist</div>
+                <p>I design and deploy end-to-end data systems that turn raw data into production-ready intelligence.</p>
+                <p>My core stack includes Python, Streamlit, BigQuery, Supabase, Hugging Face, PySpark, SQL, Machine Learning, LLMs, and Transformers.</p>
+                <p>My work spans risk scoring systems, A/B testing, AI-powered dashboards, RAG pipelines, predictive analytics, and LLM-based solutions and AI research.</p>
+                <p>Currently, I work as a Senior Data Scientist at MIVA Open University, building intelligent systems that drive analytics, decision support, and scalable AI innovation.</p>
+                <div class="about-quote">I believe: models are trained, systems are engineered, impact is delivered.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if VARIABLE_DEFINITIONS_PATH.exists():
+        with st.expander("Input dictionary", expanded=False):
+            definitions_df = pd.read_csv(VARIABLE_DEFINITIONS_PATH)
+            st.dataframe(definitions_df, use_container_width=True, hide_index=True)
+    with st.expander("Expected raw input columns", expanded=False):
+        st.dataframe(
+            pd.DataFrame({"column": RAW_INPUT_COLUMNS}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+def render_footer() -> None:
+    st.markdown(
+        """
+        <div class="app-footer">
+            <div>&copy; Okon Prince, 2026</div>
+            <div>This project is based on the data.org Financial Health Prediction Zindi challenge.</div>
+            <div>Enquiries: <a href="mailto:okonp07@gmail.com">okonp07@gmail.com</a> | <a href="tel:+2349020000299">+234(0)9020000299</a></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="SME Financial Health Studio",
@@ -1470,25 +1650,9 @@ def main() -> None:
     elif active_view == "story":
         render_eda_story()
     elif active_view == "about":
-        st.subheader("How this frontend works")
-        st.markdown(
-            """
-            - Uses the saved training artifact and the shared Python inference pipeline.
-            - Supports both one-record interactive scoring and CSV batch scoring.
-            - Returns the predicted class plus per-class probabilities.
-            - Accepts partial batch uploads by auto-filling missing feature columns.
-            """
-        )
-        if VARIABLE_DEFINITIONS_PATH.exists():
-            with st.expander("Input dictionary", expanded=True):
-                definitions_df = pd.read_csv(VARIABLE_DEFINITIONS_PATH)
-                st.dataframe(definitions_df, use_container_width=True, hide_index=True)
-        with st.expander("Expected raw input columns"):
-            st.dataframe(
-                pd.DataFrame({"column": RAW_INPUT_COLUMNS}),
-                use_container_width=True,
-                hide_index=True,
-            )
+        render_about_page()
+
+    render_footer()
 
 
 if __name__ == "__main__":
