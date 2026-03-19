@@ -53,7 +53,7 @@ NAV_ITEMS = [
     ("single", "Single-record scoring"),
     ("batch", "Batch CSV scoring"),
     ("story", "Data storytelling"),
-    ("about", "About"),
+    ("about", "About this app"),
 ]
 
 RAW_INPUT_COLUMNS = [
@@ -1333,7 +1333,7 @@ def render_eda_story() -> None:
 
 
 def render_about_page() -> None:
-    st.subheader("About")
+    st.subheader("About this app")
     st.markdown(
         """
         <div class="story-band">
@@ -1420,12 +1420,12 @@ def render_about_page() -> None:
             "This app also demonstrates what a competition solution looks like when moved from notebook experimentation into a reusable product-style interface.",
         )
 
-    st.markdown("### About the author")
-    author_cols = st.columns([0.85, 1.55], vertical_alignment="center")
+    author_cols = st.columns([0.85, 1.55], vertical_alignment="top")
     with author_cols[0]:
         if AUTHOR_IMAGE_PATH.exists():
             st.image(str(AUTHOR_IMAGE_PATH), use_container_width=True)
     with author_cols[1]:
+        st.markdown("### About the author")
         st.markdown(
             """
             <div class="about-author-card">
@@ -1440,18 +1440,6 @@ def render_about_page() -> None:
             """,
             unsafe_allow_html=True,
         )
-
-    if VARIABLE_DEFINITIONS_PATH.exists():
-        with st.expander("Input dictionary", expanded=False):
-            definitions_df = pd.read_csv(VARIABLE_DEFINITIONS_PATH)
-            st.dataframe(definitions_df, use_container_width=True, hide_index=True)
-    with st.expander("Expected raw input columns", expanded=False):
-        st.dataframe(
-            pd.DataFrame({"column": RAW_INPUT_COLUMNS}),
-            use_container_width=True,
-            hide_index=True,
-        )
-
 
 def render_footer() -> None:
     st.markdown(
